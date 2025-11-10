@@ -6,12 +6,15 @@
   "bin": {
     "bp-sync": "./src/cli.js"
   },
+  "exports": "./src/cli.js",
+  "files": ["src/cli.js"],
   "engines": {
     "node": ">=22"
   },
   "scripts": {
     "test": "node --test"
   },
+  "keywords": ["stripe", "postgresql", "cli", "database", "sync"],
   "repository": {
     "type": "git",
     "url": "https://github.com/TheProfs/bp-sync.git"

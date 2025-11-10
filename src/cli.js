@@ -1,30 +1,25 @@
 #!/usr/bin/env node
 
-import util from 'node:util'
-import { parseArgs } from 'node:util'
-import { styleText as color } from 'node:util'
-import vm from 'node:vm'
-import { readFile, writeFile } from 'node:fs/promises'
 import { execFile as execFileCb } from 'node:child_process'
+import { readFile, writeFile } from 'node:fs/promises'
 import { createInterface } from 'node:readline'
-import Stripe from 'stripe'
+import util, { parseArgs, styleText as color } from 'node:util'
+import vm from 'node:vm'
 import pkg from 'pg'
+import Stripe from 'stripe'
 
 const { Pool } = pkg
 const execFileDefault = util.promisify(execFileCb)
 
-const format = (template, args = []) => {
-  if (!args || args.length === 0) return template
-
-  let result = template
-  args.forEach((arg, i) => {
-    const value = typeof arg === 'object'
-      ? util.inspect(arg, { colors: true, depth: 2, breakLength: 60 })
-      : String(arg)
-    result = result.replace(`$${i + 1}`, value)
-  })
-  return result
-}
+const format = (template, args = []) =>
+  args.length === 0
+    ? template
+    : args.reduce((result, arg, i) => {
+        const value = typeof arg === 'object'
+          ? util.inspect(arg, { colors: true, depth: 2, breakLength: 60 })
+          : String(arg)
+        return result.replace(`$${i + 1}`, value)
+      }, template)
 
 const log = {
   error: (msg, args = []) =>
@@ -54,7 +49,7 @@ class User {
       !key.startsWith('_') &&
       key !== 'customer' &&
       typeof this[key] !== 'function' &&
-      Object.prototype.hasOwnProperty.call(this._original, key) &&
+      Object.hasOwn(this._original, key) &&
       this[key] !== this._original[key]
     )
 
@@ -71,9 +66,9 @@ class User {
       [...values, this.id]
     )
 
-    changed.forEach(key => {
+    for (const key of changed)
       this._original[key] = this[key]
-    })
+
     log.success('Saved user $1', [this.id])
 
     return this
@@ -91,9 +86,9 @@ const getKeychain = async (key, run = execFileDefault) => {
     )
     return stdout.trim()
   } catch (err) {
-    const stderr = (err && err.stderr && err.stderr.toString()) || ''
+    const stderr = err?.stderr?.toString() ?? ''
     if (/could not be found/i.test(stderr)) return null
-    throw new Error(`Keychain error for ${key}: ${stderr || err.message}`)
+    throw new Error(`Keychain error for ${key}: ${stderr || err?.message}`)
   }
 }
 
@@ -110,8 +105,8 @@ const setKeychain = async (key, value, run = execFileDefault) => {
       ['add-generic-password', '-s', 'BP_CLI', '-a', key, '-w', value]
     )
   } catch (err) {
-    const stderr = (err && err.stderr && err.stderr.toString()) || ''
-    throw new Error(`Failed to store ${key}: ${stderr || err.message}`)
+    const stderr = err?.stderr?.toString() ?? ''
+    throw new Error(`Failed to store ${key}: ${stderr || err?.message}`)
   }
 }
 
@@ -135,23 +130,23 @@ const ensureKeychain = async (
   promptFn = prompt
 ) => {
   log.info('Checking keychain for $1...', [key])
-  let value = await getKeychain(key, run)
+  const value = await getKeychain(key, run)
 
-  if (!value) {
-    log.info('$1 not found', [key])
-    value = await promptFn(`Enter ${key}: `)
-
-    const trimmed = value.trim()
-    if (!trimmed)
-      throw new Error('Credential cannot be empty')
-
-    await setKeychain(key, trimmed, run)
-    log.success('Stored $1 in keychain', [key])
-    return trimmed
+  if (value) {
+    log.success('Found $1', [key])
+    return value
   }
 
-  log.success('Found $1', [key])
-  return value
+  log.info('$1 not found', [key])
+  const input = await promptFn(`Enter ${key}: `)
+  const trimmed = input.trim()
+
+  if (!trimmed)
+    throw new Error('Credential cannot be empty')
+
+  await setKeychain(key, trimmed, run)
+  log.success('Stored $1 in keychain', [key])
+  return trimmed
 }
 
 const stripeGenerator = async function* (
@@ -221,8 +216,8 @@ const createUsersGenerator = (db, stripe) => {
   }
 }
 
-const createQueryHelper = db => {
-  return async (sql, params = []) => {
+const createQueryHelper = db =>
+  async (sql, params = []) => {
     if (typeof sql !== 'string')
       throw new TypeError('SQL must be string')
 
@@ -235,17 +230,17 @@ const createQueryHelper = db => {
       throw new Error(`Query failed: ${err.message}`)
     }
   }
-}
 
 const discoverStripeResources = stripe => {
-  const resources = {}
-
-  for (const [name, value] of Object.entries(stripe)) {
-    if (value && typeof value.list === 'function') {
-      resources[name] = filters =>
-        stripeGenerator(value, 'list', filters, name)
-    }
-  }
+  const resources = Object.entries(stripe)
+    .filter(([, value]) => typeof value?.list === 'function')
+    .reduce(
+      (acc, [name, value]) => ({
+        ...acc,
+        [name]: filters => stripeGenerator(value, 'list', filters, name)
+      }),
+      {}
+    )
 
   log.info('Discovered $1 Stripe resources', [Object.keys(resources).length])
   return resources
