@@ -4,17 +4,27 @@
   "description": "CLI for Stripe and PostgreSQL operations",
   "type": "module",
   "bin": {
-    "bp-run": "./src/cli.ts"
+    "bp-run": "./dist/cli.js"
   },
-  "exports": "./src/cli.ts",
-  "files": ["src/cli.ts"],
+  "exports": "./dist/cli.js",
+  "files": [
+    "dist/cli.js"
+  ],
   "engines": {
     "node": ">=23.6"
   },
   "scripts": {
-    "test": "NODE_ENV=test node --experimental-transform-types --test"
+    "build": "tsc src/cli.ts --outDir dist --module nodenext --target esnext --moduleResolution nodenext --esModuleInterop --skipLibCheck --noCheck",
+    "test": "NODE_ENV=test node --experimental-transform-types --test",
+    "prepublishOnly": "npm run build"
   },
-  "keywords": ["stripe", "postgresql", "cli", "database", "sync"],
+  "keywords": [
+    "stripe",
+    "postgresql",
+    "cli",
+    "database",
+    "sync"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/TheProfs/bp-run.git"
@@ -22,7 +32,10 @@
   "author": "TheProfs",
   "license": "MIT",
   "dependencies": {
-    "stripe": "^17.4.0",
-    "pg": "^8.13.1"
+    "pg": "^8.13.1",
+    "stripe": "^17.4.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
   }
 }

@@ -378,7 +378,8 @@ if (import.meta.url.startsWith('file://') && process.argv[1]) {
   const scriptPath = process.argv[1]
   const isRunningAsScript =
     import.meta.url === `file://${scriptPath}` ||
-    (scriptPath.includes('/bin/') && import.meta.url.endsWith('/cli.ts'))
+    (scriptPath.includes('/bin/') &&
+     (import.meta.url.endsWith('/cli.ts') || import.meta.url.endsWith('/cli.js')))
 
   if (isRunningAsScript) {
     main().catch(err => {
