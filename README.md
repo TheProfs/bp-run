@@ -1,4 +1,4 @@
-# bp-sync
+# bp-run
 
 [![test][test-badge]][test-url]
 
@@ -7,7 +7,7 @@ safely run `database` <--> `stripe` operations.
 ## Install
 
 ```bash
-npm install -g TheProfs/bp-sync
+npm install -g TheProfs/bp-run
 ```
 
 ## Usage
@@ -30,17 +30,17 @@ These are stored in your macOS keychain.
 
 Then, to perform a mapping:
 
-1. Run `bp-sync init`, which creates `mapping.js`
+1. Run `bp-run init`, which creates `mapping.js`
 2. Replace the loop in `mapping.js` with your own custom logic.
  1. or use an LLM to generate it, see [LLM Prompt](#llm-prompt).
-3. Run it using `bp-sync exec mapping.js`
+3. Run it using `bp-run exec mapping.js`
 
 ### Example
 
 #### 1. Generate mapping file with:
 
 ```sh
-bp-sync init
+bp-run init
 ```
 
 which creates:
@@ -71,7 +71,7 @@ for await (const user of users()) {
 #### 3. run the mapping file:
 
 ```sh
-bp-sync exec mapping.js
+bp-run exec mapping.js
 ```
 
 the end.
@@ -80,14 +80,14 @@ the end.
 
 ```sh
 Usage:
-  bp-sync              Show this help
-  bp-sync -h, --help   Show this help
-  bp-sync init         Create mapping.js
-  bp-sync exec <file>  Execute script
+  bp-run              Show this help
+  bp-run -h, --help   Show this help
+  bp-run init         Create mapping.js
+  bp-run exec <file>  Execute script
 
 Examples:
-  bp-sync init
-  bp-sync exec mapping.js
+  bp-run init
+  bp-run exec mapping.js
 ```
 
 ## Examples
@@ -177,9 +177,9 @@ Copy the following prompt and run it:
 <summary>Code Generator Prompt</summary>
 
 ```markdown
-# Generate bp-sync mapping.js
+# Generate bp-run mapping.js
 
-You are a code generator for bp-sync mapping scripts.
+You are a code generator for bp-run mapping scripts.
 Generate valid JavaScript code for `mapping.js` based on the
 user's query.
 
@@ -301,6 +301,6 @@ npm test
 
 > author: [TheProfs][author]
 
-[test-badge]: https://github.com/TheProfs/bp-sync/actions/workflows/test.yml/badge.svg
-[test-url]: https://github.com/TheProfs/bp-sync/actions/workflows/test.yml
+[test-badge]: https://github.com/TheProfs/bp-run/actions/workflows/test.yml/badge.svg
+[test-url]: https://github.com/TheProfs/bp-run/actions/workflows/test.yml
 [author]: https://github.com/TheProfs

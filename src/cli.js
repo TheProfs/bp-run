@@ -248,14 +248,14 @@ const discoverStripeResources = stripe => {
 
 const help = () => {
   console.error(`${color('bold', 'Usage:')}
-  bp-sync              Show this help
-  bp-sync -h, --help   Show this help
-  bp-sync init         Create mapping.js
-  bp-sync exec <file>  Execute script
+  bp-run              Show this help
+  bp-run -h, --help   Show this help
+  bp-run init         Create mapping.js
+  bp-run exec <file>  Execute script
 
 ${color('bold', 'Examples:')}
-  bp-sync init
-  bp-sync exec mapping.js`)
+  bp-run init
+  bp-run exec mapping.js`)
   process.exit(0)
 }
 
