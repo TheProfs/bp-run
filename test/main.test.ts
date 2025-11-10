@@ -8,13 +8,16 @@ import {
   ensureKeychain,
   createUsersGenerator,
   createQueryHelper
-} from '../src/cli.js'
+} from '../src/cli.ts'
+
+import type { Pool as PgPool } from 'pg'
+import type Stripe from 'stripe'
 
 test('User', async t => {
   await t.test('#set', async t => {
     await t.test('assigns properties', t => {
-      const db = { query: t.mock.fn(async () => ({ rows: [] })) }
-      const user = new User({ id: 1, email: 'test@example.com', field1: 'value1' }, db)
+      const db = { query: t.mock.fn(async () => ({ rows: [] })) } as unknown as PgPool
+      const user = new User({ id: 1, email: 'test@example.com', stripe_id: null, field1: 'value1' }, db)
 
       user.set({ field1: 'new' })
 
@@ -22,8 +25,8 @@ test('User', async t => {
     })
 
     await t.test('returns this for chaining', t => {
-      const db = { query: t.mock.fn(async () => ({ rows: [] })) }
-      const user = new User({ id: 1, email: 'test@example.com', field1: 'value1' }, db)
+      const db = { query: t.mock.fn(async () => ({ rows: [] })) } as unknown as PgPool
+      const user = new User({ id: 1, email: 'test@example.com', stripe_id: null, field1: 'value1' }, db)
 
       const result = user.set({ field1: 'new' })
 
@@ -31,8 +34,8 @@ test('User', async t => {
     })
 
     await t.test('assigns multiple properties', t => {
-      const db = { query: t.mock.fn(async () => ({ rows: [] })) }
-      const user = new User({ id: 1, email: 'test@example.com', field1: 'value1' }, db)
+      const db = { query: t.mock.fn(async () => ({ rows: [] })) } as unknown as PgPool
+      const user = new User({ id: 1, email: 'test@example.com', stripe_id: null, field1: 'value1' }, db)
 
       user.set({ field1: 'a', field2: 'b' })
 
@@ -43,8 +46,8 @@ test('User', async t => {
 
   await t.test('#save', async t => {
     await t.test('returns this for chaining', async t => {
-      const db = { query: t.mock.fn(async () => ({ rows: [] })) }
-      const user = new User({ id: 1, email: 'test@example.com', field1: 'value1' }, db)
+      const db = { query: t.mock.fn(async () => ({ rows: [] })) } as unknown as PgPool
+      const user = new User({ id: 1, email: 'test@example.com', stripe_id: null, field1: 'value1' }, db)
 
       user.set({ field1: 'new' })
       const result = await user.save()
@@ -53,8 +56,8 @@ test('User', async t => {
     })
 
     await t.test('updates changed fields', async t => {
-      const db = { query: t.mock.fn(async () => ({ rows: [] })) }
-      const user = new User({ id: 1, email: 'test@example.com', field1: 'value1' }, db)
+      const db = { query: t.mock.fn(async () => ({ rows: [] })) } as unknown as PgPool
+      const user = new User({ id: 1, email: 'test@example.com', stripe_id: null, field1: 'value1' }, db)
 
       user.set({ field1: 'changed' })
       await user.save()
@@ -67,8 +70,8 @@ test('User', async t => {
     })
 
     await t.test('skips save when no changes', async t => {
-      const db = { query: t.mock.fn(async () => ({ rows: [] })) }
-      const user = new User({ id: 1, email: 'test@example.com', field1: 'value1' }, db)
+      const db = { query: t.mock.fn(async () => ({ rows: [] })) } as unknown as PgPool
+      const user = new User({ id: 1, email: 'test@example.com', stripe_id: null, field1: 'value1' }, db)
 
       await user.save()
 
@@ -76,8 +79,8 @@ test('User', async t => {
     })
 
     await t.test('passes changed values', async t => {
-      const db = { query: t.mock.fn(async () => ({ rows: [] })) }
-      const user = new User({ id: 1, email: 'test@example.com', field1: 'value1' }, db)
+      const db = { query: t.mock.fn(async () => ({ rows: [] })) } as unknown as PgPool
+      const user = new User({ id: 1, email: 'test@example.com', stripe_id: null, field1: 'value1' }, db)
 
       user.set({ field1: 'new' })
       await user.save()
@@ -90,8 +93,8 @@ test('User', async t => {
     })
 
     await t.test('updates multiple fields', async t => {
-      const db = { query: t.mock.fn(async () => ({ rows: [] })) }
-      const user = new User({ id: 1, email: 'test@example.com', field1: 'value1' }, db)
+      const db = { query: t.mock.fn(async () => ({ rows: [] })) } as unknown as PgPool
+      const user = new User({ id: 1, email: 'test@example.com', stripe_id: null, field1: 'value1' }, db)
 
       user.set({ field1: 'a', email: 'new@example.com' })
       await user.save()
@@ -189,14 +192,14 @@ test('#stripeGenerator', async t => {
 test('#keychain', async t => {
   await t.test('getKeychain', async t => {
     await t.test('retrieves existing credential', async t => {
-      const run = t.mock.fn(async () => ({ stdout: 'sk_test_123' }))
+      const run = t.mock.fn(async () => ({ stdout: 'sk_test_123', stderr: '' }))
       const key = await getKeychain('BP_STRIPE_KEY', run)
 
       assert.strictEqual(key, 'sk_test_123')
     })
 
     await t.test('returns null when not found', async t => {
-      const err = new Error('not found')
+      const err: any = new Error('not found')
       err.stderr = Buffer.from('could not be found')
       const run = t.mock.fn(async () => { throw err })
       const key = await getKeychain('BP_STRIPE_KEY', run)
@@ -205,7 +208,7 @@ test('#keychain', async t => {
     })
 
     await t.test('throws on keychain locked', async t => {
-      const err = new Error('auth error')
+      const err: any = new Error('auth error')
       err.stderr = Buffer.from('The user name or passphrase you entered is not correct')
       const run = t.mock.fn(async () => { throw err })
 
@@ -216,7 +219,7 @@ test('#keychain', async t => {
     })
 
     await t.test('throws on permission denied', async t => {
-      const err = new Error('auth failed')
+      const err: any = new Error('auth failed')
       err.stderr = Buffer.from('errSecAuthFailed')
       const run = t.mock.fn(async () => { throw err })
 
@@ -229,7 +232,7 @@ test('#keychain', async t => {
 
   await t.test('setKeychain', async t => {
     await t.test('stores credential', async t => {
-      const run = t.mock.fn(async () => ({}))
+      const run = t.mock.fn(async () => ({ stdout: '', stderr: '' }))
       await setKeychain('BP_STRIPE_KEY', 'sk_test_123', run)
 
       assert.strictEqual(run.mock.calls.length, 1)
@@ -248,7 +251,7 @@ test('#keychain', async t => {
       const run = t.mock.fn()
 
       await assert.rejects(
-        () => setKeychain('KEY', 123, run),
+        () => setKeychain('KEY', 123 as any, run),
         { name: 'TypeError' }
       )
     })
@@ -276,7 +279,7 @@ test('#keychain', async t => {
 
   await t.test('ensureKeychain', async t => {
     await t.test('returns existing credential', async t => {
-      const run = t.mock.fn(async () => ({ stdout: 'sk_test_123' }))
+      const run = t.mock.fn(async () => ({ stdout: 'sk_test_123', stderr: '' }))
       const prompt = t.mock.fn()
 
       const key = await ensureKeychain('KEY', run, prompt)
@@ -290,11 +293,11 @@ test('#keychain', async t => {
       const run = t.mock.fn(async () => {
         callCount++
         if (callCount === 1) {
-          const err = new Error('not found')
+          const err: any = new Error('not found')
           err.stderr = Buffer.from('could not be found')
           throw err
         }
-        return {}
+        return { stdout: '', stderr: '' }
       })
       const prompt = t.mock.fn(async () => 'sk_test_new')
 
@@ -305,7 +308,7 @@ test('#keychain', async t => {
     })
 
     await t.test('rejects empty prompt input', async t => {
-      const run = t.mock.fn(async () => { const e = new Error('nf'); e.stderr = Buffer.from('could not be found'); throw e })
+      const run = t.mock.fn(async () => { const e: any = new Error('nf'); e.stderr = Buffer.from('could not be found'); throw e })
       const prompt = t.mock.fn(async () => '   ')
 
       await assert.rejects(
@@ -324,12 +327,12 @@ test('#users', async t => {
           { id: 1, email: 'a@test.com', stripe_id: 'cus_1' }
         ]
       }))
-    }
+    } as unknown as PgPool
     const stripe = {
       customers: {
-        retrieve: t.mock.fn(async id => ({ id, email: `${id}@stripe.com` }))
+        retrieve: t.mock.fn(async (id: string) => ({ id, email: `${id}@stripe.com` }))
       }
-    }
+    } as unknown as Stripe
     const users = createUsersGenerator(db, stripe)
 
     const items = []
@@ -342,8 +345,8 @@ test('#users', async t => {
   await t.test('passes where clause', async t => {
     const db = {
       query: t.mock.fn(async () => ({ rows: [] }))
-    }
-    const stripe = { customers: { retrieve: t.mock.fn() } }
+    } as unknown as PgPool
+    const stripe = { customers: { retrieve: t.mock.fn() } } as unknown as Stripe
     const users = createUsersGenerator(db, stripe)
 
     for await (const _ of users('field1 IS NULL', [])) {}
@@ -357,8 +360,8 @@ test('#users', async t => {
   await t.test('passes parameters', async t => {
     const db = {
       query: t.mock.fn(async () => ({ rows: [] }))
-    }
-    const stripe = { customers: { retrieve: t.mock.fn() } }
+    } as unknown as PgPool
+    const stripe = { customers: { retrieve: t.mock.fn() } } as unknown as Stripe
     const users = createUsersGenerator(db, stripe)
 
     for await (const _ of users('id = $1', [123])) {}
@@ -374,12 +377,12 @@ test('#users', async t => {
       query: t.mock.fn(async () => ({
         rows: [{ id: 1, email: 'a@test.com', stripe_id: 'cus_1' }]
       }))
-    }
+    } as unknown as PgPool
     const stripe = {
       customers: {
         retrieve: t.mock.fn()
       }
-    }
+    } as unknown as Stripe
     const users = createUsersGenerator(db, stripe)
 
     for await (const _ of users()) {}
@@ -395,12 +398,12 @@ test('#users', async t => {
           { id: 2, email: 'b@test.com', stripe_id: 'cus_2' }
         ]
       }))
-    }
+    } as unknown as PgPool
     const stripe = {
       customers: {
-        retrieve: t.mock.fn(async id => ({ id }))
+        retrieve: t.mock.fn(async (id: string) => ({ id }))
       }
-    }
+    } as unknown as Stripe
     const users = createUsersGenerator(db, stripe)
 
     for await (const _ of users('', [], { fetchCustomer: true })) {}
@@ -413,12 +416,12 @@ test('#users', async t => {
       query: t.mock.fn(async () => ({
         rows: [{ id: 1, email: 'a@test.com', stripe_id: 'cus_1' }]
       }))
-    }
+    } as unknown as PgPool
     const stripe = {
       customers: {
-        retrieve: t.mock.fn(async id => ({ id, email: `${id}@stripe.com` }))
+        retrieve: t.mock.fn(async (id: string) => ({ id, email: `${id}@stripe.com` }))
       }
-    }
+    } as unknown as Stripe
     const users = createUsersGenerator(db, stripe)
 
     const items = []
@@ -434,12 +437,12 @@ test('#users', async t => {
       query: t.mock.fn(async () => ({
         rows: [{ id: 1, email: 'test@example.com', stripe_id: null }]
       }))
-    }
+    } as unknown as PgPool
     const stripe = {
       customers: {
         retrieve: t.mock.fn()
       }
-    }
+    } as unknown as Stripe
     const users = createUsersGenerator(db, stripe)
 
     const items = []
@@ -454,14 +457,14 @@ test('#users', async t => {
       query: t.mock.fn(async () => ({
         rows: [{ id: 1, email: 'test@example.com', stripe_id: 'cus_1' }]
       }))
-    }
+    } as unknown as PgPool
     const stripe = {
       customers: {
         retrieve: t.mock.fn(async () => {
           throw new Error('Not found')
         })
       }
-    }
+    } as unknown as Stripe
     const users = createUsersGenerator(db, stripe)
 
     const items = []
@@ -476,7 +479,7 @@ test('#query', async t => {
   await t.test('wraps db.query', async t => {
     const db = {
       query: t.mock.fn(async () => ({ rows: [{ id: 1 }] }))
-    }
+    } as unknown as PgPool
     const query = createQueryHelper(db)
 
     await query('SELECT *', [])
@@ -487,7 +490,7 @@ test('#query', async t => {
   await t.test('passes sql and params', async t => {
     const db = {
       query: t.mock.fn(async () => ({ rows: [{ id: 1 }] }))
-    }
+    } as unknown as PgPool
     const query = createQueryHelper(db)
 
     await query('SELECT * WHERE id = $1', [123])
@@ -502,11 +505,11 @@ test('#query', async t => {
   await t.test('validates sql type', async t => {
     const db = {
       query: t.mock.fn(async () => ({ rows: [{ id: 1 }] }))
-    }
+    } as unknown as PgPool
     const query = createQueryHelper(db)
 
     await assert.rejects(
-      () => query(123, []),
+      () => query(123 as any, []),
       { name: 'TypeError', message: /SQL must be string/i }
     )
   })
@@ -514,11 +517,11 @@ test('#query', async t => {
   await t.test('validates params type', async t => {
     const db = {
       query: t.mock.fn(async () => ({ rows: [{ id: 1 }] }))
-    }
+    } as unknown as PgPool
     const query = createQueryHelper(db)
 
     await assert.rejects(
-      () => query('SELECT *', 'not-array'),
+      () => query('SELECT *', 'not-array' as any),
       { name: 'TypeError', message: /array/i }
     )
   })

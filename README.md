@@ -7,17 +7,29 @@ safely run `database` <--> `stripe` operations.
 ## Install
 
 ```bash
-npm install -g TheProfs/bp-run
+npm i -g TheProfs/bp-run
 ```
 
 ## Usage
 
-This is a script runner that runs *mapping files*,
-which contain some custom logic to sync data between
-your database and Stripe.
+Script runner for *mapping files* containing sync logic between
+database and Stripe.
+Authentication, pagination, error-handling, and logging are
+abstracted.
 
-It abstracts away authentication, pagination, error-handling,
-and logging so you don't have to worry about that.
+instead of doing:
+
+```js
+node mapping.js
+```
+
+you do:
+
+```sh
+bp-run exec mapping.js
+```
+
+### auth
 
 The first time you run it, you'll be prompted for:
 
@@ -26,13 +38,13 @@ The first time you run it, you'll be prompted for:
 
 These are stored in your macOS keychain.
 
-### Mapping
+### mapping
 
 Then, to perform a mapping:
 
 1. Run `bp-run init`, which creates `mapping.js`
 2. Replace the loop in `mapping.js` with your own custom logic.
- 1. or use an LLM to generate it, see [LLM Prompt](#llm-prompt).
+   Or use an LLM to generate it, see [LLM Prompt](#llm-prompt).
 3. Run it using `bp-run exec mapping.js`
 
 ### Example
@@ -56,7 +68,7 @@ for await (const user of users()) {
 }
 ```
 
-#### 2. Edit the above file to add your custom logic.
+#### 2. Edit the file to add your custom logic.
 
 ```js
 // mapping.js
@@ -168,9 +180,8 @@ for await (const user of users('stripe_id IS NOT NULL')) {
 
 ### LLM Prompt
 
-Instead of writing mapping.js scripts manually,
-you can use an LLM to generate them from natural language.
-
+Generate mapping.js scripts using an LLM instead of writing
+manually.
 Copy the following prompt and run it:
 
 <details>
@@ -179,9 +190,9 @@ Copy the following prompt and run it:
 ```markdown
 # Generate bp-run mapping.js
 
-You are a code generator for bp-run mapping scripts.
-Generate valid JavaScript code for `mapping.js` based on the
-user's query.
+Code generator for bp-run mapping scripts.
+Generate valid JavaScript code for `mapping.js` based on user
+query.
 
 ## User Query
 
@@ -191,10 +202,12 @@ The user wants to: **[YOUR QUERY HERE]**
 
 <API>
 **Database:**
-- `users(where, params, options)` - Generator yielding User instances
+- `users(where, params, options)` - Generator yielding User
+  instances
   - `where`: SQL WHERE clause (without WHERE keyword)
   - `params`: Array of parameterized values for $1, $2, etc.
-  - `options.fetchCustomer`: Boolean, auto-fetches Stripe customer if true
+  - `options.fetchCustomer`: Boolean, auto-fetches Stripe
+    customer if true
   - Returns User with `.set(data)` and `.save()` methods
 
 - `query(sql, params)` - Execute raw SQL (INSERT/UPDATE/DELETE)
@@ -205,7 +218,8 @@ The user wants to: **[YOUR QUERY HERE]**
 - `subscriptions(filters)` - Generator for Stripe subscriptions
 - `invoices(filters)` - Generator for Stripe invoices
 - `charges(filters)` - Generator for Stripe charges
-- All resources auto-discovered, accept Stripe API filter objects
+- All resources auto-discovered, accept Stripe API filter
+  objects
 
 **Logging:**
 - `log.info(msg, args)` - General messages
@@ -254,13 +268,16 @@ for await (const customer of customers({ email: 'test@example.com' })) {
 ## Rules
 
 <RULES>
-1. Output ONLY valid JavaScript code - no markdown, no explanations
-2. Use guard clauses: `if (!condition) continue` instead of nested if blocks
+1. Output ONLY valid JavaScript code - no markdown, no
+   explanations
+2. Use guard clauses: `if (!condition) continue` instead of
+   nested if blocks
 3. Use async generators: `for await (const x of generator())`
 4. Chain User methods: `user.set({...}).save()`
 5. Use $1, $2 placeholders in log messages with args array
 6. Always handle null/missing Stripe data with guard clauses
-7. Use fetchCustomer option only when accessing user.customer
+7. Use fetchCustomer option only when accessing
+   user.customer
 8. Prefer query() for complex multi-table operations
 9. Use descriptive variable names matching the domain
 10. Keep code concise - one clear operation per script
@@ -279,18 +296,24 @@ cat prompt.md | codex exec
 ## Injected Globals
 
 **Stripe:**
-- `customers(filters)`, `subscriptions(filters)`, `invoices(filters)`, etc.
+
+- `customers(filters)`, `subscriptions(filters)`,
+  `invoices(filters)`, etc.
 - `stripe` - raw client
 
 **Database:**
-- `users(where, params, options)` - generator with `.set()` and `.save()`
+
+- `users(where, params, options)` - generator with `.set()` and
+  `.save()`
 - `query(sql, params)` - direct queries
 - `db` - raw pg client
 
 **Logging:**
+
 - `log.error()`, `log.success()`, `log.warning()`, `log.info()`
 
-All output to stderr. Placeholders: `$1`, `$2`.
+All output to stderr.
+Placeholders: `$1`, `$2`.
 
 ## Test
 

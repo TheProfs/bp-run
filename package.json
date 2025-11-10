@@ -4,15 +4,15 @@
   "description": "CLI for Stripe and PostgreSQL operations",
   "type": "module",
   "bin": {
-    "bp-run": "./src/cli.js"
+    "bp-run": "./src/cli.ts"
   },
-  "exports": "./src/cli.js",
-  "files": ["src/cli.js"],
+  "exports": "./src/cli.ts",
+  "files": ["src/cli.ts"],
   "engines": {
-    "node": ">=22"
+    "node": ">=23.6"
   },
   "scripts": {
-    "test": "node --test"
+    "test": "node --experimental-transform-types --test"
   },
   "keywords": ["stripe", "postgresql", "cli", "database", "sync"],
   "repository": {

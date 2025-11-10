@@ -8,10 +8,17 @@ import vm from 'node:vm'
 import pkg from 'pg'
 import Stripe from 'stripe'
 
+import type { Pool as PgPool, QueryResult } from 'pg'
+
 const { Pool } = pkg
 const execFileDefault = util.promisify(execFileCb)
 
-const format = (template, args = []) =>
+type RunFunction = (
+  command: string,
+  args: string[]
+) => Promise<{ stdout: string; stderr: string }>
+
+const format = (template: string, args: unknown[] = []): string =>
   args.length === 0
     ? template
     : args.reduce((result, arg, i) => {
@@ -22,24 +29,36 @@ const format = (template, args = []) =>
       }, template)
 
 const log = {
-  error: (msg, args = []) =>
+  error: (msg: string, args: unknown[] = []) =>
     console.error(`${color('red', 'error:')} ${format(msg, args)}`),
-  success: (msg, args = []) =>
+  success: (msg: string, args: unknown[] = []) =>
     console.error(`${color('green', '✓')} ${format(msg, args)}`),
-  warning: (msg, args = []) =>
+  warning: (msg: string, args: unknown[] = []) =>
     console.error(`${color('yellow', 'warning:')} ${format(msg, args)}`),
-  info: (msg, args = []) =>
+  info: (msg: string, args: unknown[] = []) =>
     console.error(format(msg, args))
 }
 
+interface UserRow {
+  id: number
+  email: string
+  stripe_id: string | null
+  [key: string]: unknown
+}
+
 class User {
-  constructor(row, db) {
+  private _db: PgPool
+  private _original: Record<string, unknown>
+  customer?: Stripe.Customer | null
+  [key: string]: unknown
+
+  constructor(row: UserRow, db: PgPool) {
     Object.assign(this, row)
     this._db = db
     this._original = { ...row }
   }
 
-  set = data => {
+  set = (data: Record<string, unknown>) => {
     Object.assign(this, data)
     return this
   }
@@ -57,7 +76,7 @@ class User {
 
     log.info('Saving user $1 ($2)', [this.id, changed.join(', ')])
 
-    const ident = s => `"${String(s).replace(/\"/g, '""')}"`
+    const ident = (s: string) => `"${String(s).replace(/\"/g, '""')}"`
     const sets = changed.map((key, i) => `${ident(key)} = $${i + 1}`).join(', ')
     const values = changed.map(key => this[key])
 
@@ -75,7 +94,10 @@ class User {
   }
 }
 
-const getKeychain = async (key, run = execFileDefault) => {
+const getKeychain = async (
+  key: string,
+  run: RunFunction = execFileDefault
+): Promise<string | null> => {
   if (!/^[A-Z_]+$/.test(key))
     throw new TypeError('Key must be uppercase letters and underscores only')
 
@@ -85,14 +107,18 @@ const getKeychain = async (key, run = execFileDefault) => {
       ['find-generic-password', '-s', 'BP_CLI', '-a', key, '-w']
     )
     return stdout.trim()
-  } catch (err) {
-    const stderr = err?.stderr?.toString() ?? ''
+  } catch (err: unknown) {
+    const stderr = (err as any)?.stderr?.toString() ?? ''
     if (/could not be found/i.test(stderr)) return null
-    throw new Error(`Keychain error for ${key}: ${stderr || err?.message}`)
+    throw new Error(`Keychain error for ${key}: ${stderr || (err as any)?.message}`)
   }
 }
 
-const setKeychain = async (key, value, run = execFileDefault) => {
+const setKeychain = async (
+  key: string,
+  value: string,
+  run: RunFunction = execFileDefault
+): Promise<void> => {
   if (!value || typeof value !== 'string')
     throw new TypeError('Credential must be non-empty string')
 
@@ -104,13 +130,13 @@ const setKeychain = async (key, value, run = execFileDefault) => {
       '/usr/bin/security',
       ['add-generic-password', '-s', 'BP_CLI', '-a', key, '-w', value]
     )
-  } catch (err) {
-    const stderr = err?.stderr?.toString() ?? ''
-    throw new Error(`Failed to store ${key}: ${stderr || err?.message}`)
+  } catch (err: unknown) {
+    const stderr = (err as any)?.stderr?.toString() ?? ''
+    throw new Error(`Failed to store ${key}: ${stderr || (err as any)?.message}`)
   }
 }
 
-const prompt = async msg => {
+const prompt = async (msg: string): Promise<string> => {
   const rl = createInterface({
     input: process.stdin,
     output: process.stderr
@@ -125,10 +151,10 @@ const prompt = async msg => {
 }
 
 const ensureKeychain = async (
-  key,
-  run = execFileDefault,
-  promptFn = prompt
-) => {
+  key: string,
+  run: RunFunction = execFileDefault,
+  promptFn: typeof prompt = prompt
+): Promise<string> => {
   log.info('Checking keychain for $1...', [key])
   const value = await getKeychain(key, run)
 
@@ -150,15 +176,15 @@ const ensureKeychain = async (
 }
 
 const stripeGenerator = async function* (
-  resource,
-  method,
-  filters,
-  name
-) {
+  resource: any,
+  method: string,
+  filters: Record<string, unknown>,
+  name: string
+): AsyncGenerator<any> {
   log.info('Getting $1...', [name])
 
   let hasMore = true
-  let startingAfter
+  let startingAfter: string | undefined
 
   while (hasMore) {
     try {
@@ -175,18 +201,18 @@ const stripeGenerator = async function* (
       hasMore = result.has_more
       if (hasMore)
         startingAfter = result.data[result.data.length - 1].id
-    } catch (err) {
-      throw new Error(`Stripe ${name} failed: ${err.message}`)
+    } catch (err: unknown) {
+      throw new Error(`Stripe ${name} failed: ${(err as Error).message}`)
     }
   }
 }
 
-const createUsersGenerator = (db, stripe) => {
+const createUsersGenerator = (db: PgPool, stripe: Stripe) => {
   return async function* (
-    where = '',
-    params = [],
-    { fetchCustomer = false } = {}
-  ) {
+    where: string = '',
+    params: unknown[] = [],
+    { fetchCustomer = false }: { fetchCustomer?: boolean } = {}
+  ): AsyncGenerator<User> {
     const sql = where
       ? `SELECT * FROM users WHERE ${where}`
       : `SELECT * FROM users`
@@ -201,10 +227,10 @@ const createUsersGenerator = (db, stripe) => {
         try {
           log.info('Fetching customer $1', [row.stripe_id])
           user.customer = await stripe.customers.retrieve(row.stripe_id)
-        } catch (err) {
+        } catch (err: unknown) {
           log.warning(
             'Failed to fetch customer $1: $2',
-            [row.stripe_id, err.message]
+            [row.stripe_id, (err as Error).message]
           )
           user.customer = null
         }
@@ -216,8 +242,8 @@ const createUsersGenerator = (db, stripe) => {
   }
 }
 
-const createQueryHelper = db =>
-  async (sql, params = []) => {
+const createQueryHelper = (db: PgPool) =>
+  async (sql: string, params: unknown[] = []): Promise<QueryResult> => {
     if (typeof sql !== 'string')
       throw new TypeError('SQL must be string')
 
@@ -226,40 +252,41 @@ const createQueryHelper = db =>
 
     try {
       return await db.query(sql, params)
-    } catch (err) {
-      throw new Error(`Query failed: ${err.message}`)
+    } catch (err: unknown) {
+      throw new Error(`Query failed: ${(err as Error).message}`)
     }
   }
 
-const discoverStripeResources = stripe => {
+const discoverStripeResources = (stripe: Stripe): Record<string, Function> => {
   const resources = Object.entries(stripe)
-    .filter(([, value]) => typeof value?.list === 'function')
+    .filter(([, value]) => typeof (value as any)?.list === 'function')
     .reduce(
       (acc, [name, value]) => ({
         ...acc,
-        [name]: filters => stripeGenerator(value, 'list', filters, name)
+        [name]: (filters: Record<string, unknown>) =>
+          stripeGenerator(value, 'list', filters, name)
       }),
-      {}
+      {} as Record<string, Function>
     )
 
   log.info('Discovered $1 Stripe resources', [Object.keys(resources).length])
   return resources
 }
 
-const help = () => {
+const help = (): void => {
   console.error(`${color('bold', 'Usage:')}
-  bp-run              Show this help
-  bp-run -h, --help   Show this help
-  bp-run init         Create mapping.js
-  bp-run exec <file>  Execute script
+  bp-sync              Show this help
+  bp-sync -h, --help   Show this help
+  bp-sync init         Create mapping.js
+  bp-sync exec <file>  Execute script
 
 ${color('bold', 'Examples:')}
-  bp-run init
-  bp-run exec mapping.js`)
+  bp-sync init
+  bp-sync exec mapping.js`)
   process.exit(0)
 }
 
-const init = async () => {
+const init = async (): Promise<void> => {
   const example = `for await (const user of users('field1 IS NULL', [], { fetchCustomer: true })) {
   if (!user.customer) continue
 
@@ -274,7 +301,7 @@ const init = async () => {
   process.exit(0)
 }
 
-const exec = async filepath => {
+const exec = async (filepath: string): Promise<void> => {
   try {
     await readFile(filepath)
   } catch {
@@ -307,14 +334,14 @@ const exec = async filepath => {
       vm.createContext(context),
       { microtaskMode: 'afterEvaluate' }
     )
-  } catch (err) {
-    throw new Error(`Script error in ${filepath}:\n${err.stack}`)
+  } catch (err: unknown) {
+    throw new Error(`Script error in ${filepath}:\n${(err as Error).stack}`)
   } finally {
     await db.end()
   }
 }
 
-const main = async () => {
+const main = async (): Promise<void> => {
   const { values, positionals } = parseArgs({
     options: {
       help: { type: 'boolean', short: 'h' }
@@ -347,7 +374,7 @@ if (import.meta.url.startsWith('file://') && process.argv[1]) {
   const scriptPath = process.argv[1]
   const isRunningAsScript =
     import.meta.url === `file://${scriptPath}` ||
-    (scriptPath.includes('/bin/') && import.meta.url.endsWith('/cli.js'))
+    (scriptPath.includes('/bin/') && import.meta.url.endsWith('/cli.ts'))
 
   if (isRunningAsScript) {
     main().catch(err => {
