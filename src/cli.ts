@@ -18,10 +18,14 @@ type RunFunction = (
   args: string[]
 ) => Promise<{ stdout: string; stderr: string }>
 
+interface VMRunOptions extends vm.RunningScriptOptions {
+  microtaskMode?: 'afterEvaluate'
+}
+
 const format = (template: string, args: unknown[] = []): string =>
   args.length === 0
     ? template
-    : args.reduce((result, arg, i) => {
+    : args.reduce<string>((result, arg, i) => {
         const value = typeof arg === 'object'
           ? util.inspect(arg, { colors: true, depth: 2, breakLength: 60 })
           : String(arg)
@@ -230,7 +234,7 @@ const createUsersGenerator = (db: PgPool, stripe: Stripe) => {
       if (fetchCustomer && row.stripe_id) {
         try {
           log.info('Fetching customer $1', [row.stripe_id])
-          user.customer = await stripe.customers.retrieve(row.stripe_id)
+          user.customer = await stripe.customers.retrieve(row.stripe_id) as Stripe.Customer
         } catch (err: unknown) {
           log.warning(
             'Failed to fetch customer $1: $2',
@@ -336,7 +340,7 @@ const exec = async (filepath: string): Promise<void> => {
     const script = new vm.Script(wrappedCode)
     await script.runInContext(
       vm.createContext(context),
-      { microtaskMode: 'afterEvaluate' }
+      { microtaskMode: 'afterEvaluate' } as VMRunOptions
     )
   } catch (err: unknown) {
     throw new Error(`Script error in ${filepath}:\n${(err as Error).stack}`)
@@ -378,7 +382,7 @@ if (import.meta.url.startsWith('file://') && process.argv[1]) {
   const scriptPath = process.argv[1]
   const isRunningAsScript =
     import.meta.url === `file://${scriptPath}` ||
-    (scriptPath.includes('/bin/') &&
+    (['/bin/', '/.bin/'].some(p => scriptPath.includes(p)) &&
      (import.meta.url.endsWith('/cli.ts') || import.meta.url.endsWith('/cli.js')))
 
   if (isRunningAsScript) {

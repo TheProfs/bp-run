@@ -16,6 +16,7 @@
   "scripts": {
     "build": "tsc src/cli.ts --outDir dist --module nodenext --target esnext --moduleResolution nodenext --esModuleInterop --skipLibCheck --noCheck",
     "test": "NODE_ENV=test node --experimental-transform-types --test",
+    "prepare": "npm run build",
     "prepublishOnly": "npm run build"
   },
   "keywords": [

@@ -7,7 +7,7 @@ safely run `database` <--> `stripe` operations.
 ## Install
 
 ```bash
-npm i -g TheProfs/bp-run
+npm i -g github:TheProfs/bp-run
 ```
 
 ## Usage
