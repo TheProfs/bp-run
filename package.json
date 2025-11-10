@@ -12,7 +12,7 @@
     "node": ">=23.6"
   },
   "scripts": {
-    "test": "node --experimental-transform-types --test"
+    "test": "NODE_ENV=test node --experimental-transform-types --test"
   },
   "keywords": ["stripe", "postgresql", "cli", "database", "sync"],
   "repository": {

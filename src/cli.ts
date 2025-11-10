@@ -30,12 +30,16 @@ const format = (template: string, args: unknown[] = []): string =>
 
 const log = {
   error: (msg: string, args: unknown[] = []) =>
+    process.env.NODE_ENV !== 'test' &&
     console.error(`${color('red', 'error:')} ${format(msg, args)}`),
   success: (msg: string, args: unknown[] = []) =>
+    process.env.NODE_ENV !== 'test' &&
     console.error(`${color('green', '✓')} ${format(msg, args)}`),
   warning: (msg: string, args: unknown[] = []) =>
+    process.env.NODE_ENV !== 'test' &&
     console.error(`${color('yellow', 'warning:')} ${format(msg, args)}`),
   info: (msg: string, args: unknown[] = []) =>
+    process.env.NODE_ENV !== 'test' &&
     console.error(format(msg, args))
 }
 
