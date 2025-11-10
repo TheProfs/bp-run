@@ -75,7 +75,7 @@ for await (const user of users()) {
 
 for await (const user of users()) {
   await user.set({
-    stripe_subsription_status: user.subscription?.status || null
+    stripe_subscription_status: user.subscription?.status || null
   }).save()
 }
 ````

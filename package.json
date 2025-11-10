@@ -11,7 +11,7 @@
     "dist/cli.js"
   ],
   "engines": {
-    "node": ">=23.6"
+    "node": ">=24"
   },
   "scripts": {
     "build": "tsc src/cli.ts --outDir dist --module nodenext --target esnext --moduleResolution nodenext --esModuleInterop --skipLibCheck --noCheck",
