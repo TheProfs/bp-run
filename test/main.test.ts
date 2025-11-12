@@ -9,6 +9,7 @@ import {
   createUsersGenerator,
   createQueryHelper
 } from '../src/cli.ts'
+import { mocks } from './utils/index.ts'
 
 import type { Pool as PgPool } from 'pg'
 import type Stripe from 'stripe'
@@ -419,7 +420,7 @@ test('#users', async t => {
     } as unknown as PgPool
     const stripe = {
       customers: {
-        retrieve: t.mock.fn(async (id: string) => ({ id, email: `${id}@stripe.com` }))
+        retrieve: t.mock.fn(mocks.stripe.customers.retrieve)
       }
     } as unknown as Stripe
     const users = createUsersGenerator(db, stripe)
@@ -430,6 +431,29 @@ test('#users', async t => {
 
     assert.ok(items[0].customer)
     assert.strictEqual(items[0].customer.id, 'cus_1')
+    assert.strictEqual(items[0].customer.email, 'cus_1@example.com')
+  })
+
+  await t.test('returns full customer data with mock utilities', async t => {
+    const db = {
+      query: t.mock.fn(async () => ({
+        rows: [{ id: 1, email: 'a@test.com', stripe_id: 'cus_test' }]
+      }))
+    } as unknown as PgPool
+
+    t.mock.method(mocks.stripe.customers, 'retrieve')
+
+    const users = createUsersGenerator(db, mocks.stripe as unknown as Stripe)
+
+    const items = []
+    for await (const user of users('', [], { fetchCustomer: true }))
+      items.push(user)
+
+    assert.ok(items[0].customer)
+    assert.strictEqual(items[0].customer.id, 'cus_test')
+    assert.strictEqual(items[0].customer.name, 'Test Customer')
+    assert.strictEqual(items[0].customer.currency, 'usd')
+    assert.strictEqual(mocks.stripe.customers.retrieve.mock.callCount(), 1)
   })
 
   await t.test('handles missing stripe_id', async t => {

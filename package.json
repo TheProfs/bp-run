@@ -11,7 +11,7 @@
     "dist/cli.js"
   ],
   "engines": {
-    "node": ">=23.6"
+    "node": ">=24"
   },
   "scripts": {
     "build": "tsc src/cli.ts --outDir dist --module nodenext --target esnext --moduleResolution nodenext --esModuleInterop --skipLibCheck --noCheck",
@@ -34,9 +34,7 @@
   "license": "MIT",
   "dependencies": {
     "pg": "^8.13.1",
-    "stripe": "^17.4.0"
-  },
-  "devDependencies": {
+    "stripe": "^17.4.0",
     "typescript": "^5.9.3"
   }
 }

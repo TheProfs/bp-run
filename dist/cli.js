@@ -48,7 +48,7 @@ class User {
         if (!changed.length)
             return this;
         log.info('Saving user $1 ($2)', [this.id, changed.join(', ')]);
-        const ident = (s) => `"${String(s).replace(/\"/g, '""')}"`;
+        const ident = (s) => `"${String(s).replace(/"/g, '""')}"`;
         const sets = changed.map((key, i) => `${ident(key)} = $${i + 1}`).join(', ');
         const values = changed.map(key => this[key]);
         await this._db.query(`UPDATE users SET ${sets} WHERE id = $${changed.length + 1}`, [...values, this.id]);
@@ -78,7 +78,7 @@ const setKeychain = async (key, value, run = execFileDefault) => {
     if (!/^[A-Z_]+$/.test(key))
         throw new TypeError('Key must be uppercase letters and underscores only');
     try {
-        await run('/usr/bin/security', ['add-generic-password', '-s', 'BP_CLI', '-a', key, '-w', value]);
+        await run('/usr/bin/security', ['add-generic-password', '-U', '-s', 'BP_CLI', '-a', key, '-w', value]);
     }
     catch (err) {
         const stderr = err?.stderr?.toString() ?? '';
@@ -184,14 +184,14 @@ const discoverStripeResources = (stripe) => {
 };
 const help = () => {
     console.error(`${color('bold', 'Usage:')}
-  bp-sync              Show this help
-  bp-sync -h, --help   Show this help
-  bp-sync init         Create mapping.js
-  bp-sync exec <file>  Execute script
+  bp-run              Show this help
+  bp-run -h, --help   Show this help
+  bp-run init         Create mapping.js
+  bp-run exec <file>  Execute script
 
 ${color('bold', 'Examples:')}
-  bp-sync init
-  bp-sync exec mapping.js`);
+  bp-run init
+  bp-run exec mapping.js`);
     process.exit(0);
 };
 const init = async () => {
